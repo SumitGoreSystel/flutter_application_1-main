@@ -101,6 +101,8 @@ class MenuItem {
   int isParent;
   int childrenCount;
   int childIsParent;
+  List<MenuItem>?child;
+  
 
   MenuItem({
     required this.userId,
@@ -122,24 +124,25 @@ class MenuItem {
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
     return MenuItem(
-      userId: json['userId'],
-      roleId: json['roleId'],
-      menuId: json['menuId'],
-      parentMenuId: json['parentMenuId'],
-      subRoleId: json['subRoleId'],
-      subRoleName: json['subRoleName'],
-      subRoleCode: json['subRoleCode'],
-      subRoleDesc: json['subRoleDesc'],
-      displayOrder: json['displayOrder'],
-      defaultChildMenuId: json['defaultChildMenuId'],
-      menuIconUrl: json['menuIconUrl'],
-      templatePath: json['templatePath'],
-      isParent: json['isParent'],
-      childrenCount: json['childrenCount'],
-      childIsParent: json['childIsParent'],
+      userId: json['userId'] ?? 0, // Provide a default value or handle null appropriately
+      roleId: json['roleId'] ?? 0,
+      menuId: json['menuId'] ?? 0,
+      parentMenuId: json['parentMenuId'] ?? 0,
+      subRoleId: json['subRoleId'] ?? 0,
+      subRoleName: json['subRoleName'] ?? '',
+      subRoleCode: json['subRoleCode'] ?? '',
+      subRoleDesc: json['subRoleDesc'] ?? '',
+      displayOrder: json['displayOrder'] ?? 0,
+      defaultChildMenuId: json['defaultChildMenuId'] ?? 0,
+      menuIconUrl: json['menuIconUrl'] ?? '',
+      templatePath: json['templatePath'] ?? '',
+      isParent: json['isParent'] ?? 0,
+      childrenCount: json['childrenCount'] ?? 0,
+      childIsParent: json['childIsParent'] ?? 0,
     );
   }
 }
+
 
 class MenuData {
   List<MenuItem> items;

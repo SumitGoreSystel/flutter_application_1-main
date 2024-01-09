@@ -1,7 +1,11 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'NetworkService/network_service.dart';
 import 'app_service.dart';
 
 class LoginComponent extends StatelessWidget {
@@ -107,7 +111,7 @@ class LoginForm extends StatelessWidget {
   LoginForm({Key? key})
       : _userIdController = TextEditingController(),
         _passwordController = TextEditingController(),
-        storage = FlutterSecureStorage(),
+        storage = const FlutterSecureStorage(),
         apiService = ApiService(),
         super(key: key);
 
@@ -154,19 +158,18 @@ class LoginForm extends StatelessWidget {
               try {
                 // Make the login API request
                 final loginResponse =
-                    await apiService.makePostRequest(userId, password);
+                    await apiService.login(userId, password);
 
-                if (loginResponse.data != null &&
-                    loginResponse.data.token != null &&
-                    loginResponse.data.token.isNotEmpty) {
+                if (loginResponse.data.token.isNotEmpty) {
                   // Store the access token
                   await storage.write(
                       key: 'access_token', value: loginResponse.data.token);
+                  await NetworkService.setupInterceptors();
 
                   final response = await apiService.validateToken();
 
                   if (response.token.isNotEmpty) {
-                    Navigator.pushNamed(context, '/');
+                    context.go('/');
                     print('Token validation successful');
                   } else {
                     print('Token validation failed');
@@ -176,14 +179,11 @@ class LoginForm extends StatelessWidget {
                 } else {
                   // Handle the case when the login response does not contain a token
                   print(
-                      'Login failed: ${loginResponse.data?.designation ?? 'No designation available'}');
+                      'Login failed: ${loginResponse.data.designation}');
                 }
               } catch (error) {
                 // Handle errors that might occur during API requests
                 print('Login error: $error');
-              } catch (error) {
-                // Handle errors that might occur during API requests
-                print('Error: $error');
               }
             },
             style: ElevatedButton.styleFrom(
@@ -215,7 +215,7 @@ class LoginForm extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 // Add your Microsoft login logic here
-                Navigator.pushNamed(context, '/');
+                context.go('/');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0072C6), // Background color

@@ -1,23 +1,28 @@
 import 'dart:convert';
+import 'package:flutter_application_1/NetworkService/network_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'models.dart';
+import 'package:dio/dio.dart';
+
 
 class ApiService {
-  static const baseUrl = 'localhost:44306'; // Adjusted the base URL
-  FlutterSecureStorage storage = FlutterSecureStorage();
+  static const baseUrl = 'https://localhost:44306'; // Adjusted the base URL
+  FlutterSecureStorage storage = const FlutterSecureStorage();
 
   /// User Login Validation Method
-  Future<LoginResponse> makePostRequest(String userId, String password) async {
+  Future<LoginResponse> login(String userId, String password) async {
     try {
       final response = await http.post(
-        Uri.https(baseUrl, 'users/auth'), // Used Uri.https for HTTPS
+        Uri.parse('$baseUrl/users/auth'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: jsonEncode({
           'userName': userId,
           'password': password,
           'companyCode': 'string',
         }),
-        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
@@ -72,7 +77,7 @@ class ApiService {
       final String? accessToken = await storage.read(key: 'access_token');
 
       final response = await http.get(
-        Uri.https(baseUrl, 'users/ValidateToken'),
+        Uri.parse('$baseUrl/users/ValidateToken'),
         headers: {
           'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
@@ -91,21 +96,22 @@ class ApiService {
     }
   }
 
-  Future<MenuData> fetchMenuData() async {
-    final String? accessToken = await storage.read(key: 'access_token');
-    final response = await http.get(
-      Uri.https(baseUrl, 'menus/GetMenuForUser'),
-      headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-    );
+Future<MenuData> fetchMenuData(int userId) async {
+  print('Request Headers (Before Request): ${NetworkService.dio.options.headers}');
+  final Response response = await NetworkService.dio.post(
+    '$baseUrl/menus/GetMenuForUser',
+    data: {'userId': userId},
+  );
+  print('Request Headers: ${response.requestOptions.headers}');
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> jsonData = json.decode(response.body);
-      return MenuData.fromJson(jsonData);
-    } else {
-      throw Exception('Failed to load menu data');
-    }
+  final Map<String, dynamic>? jsonData = response.data is Map<String, dynamic> ? response.data : null;
+
+  if (response.statusCode == 200 && jsonData != null) {
+    return MenuData.fromJson(jsonData);
+  } else {
+    // The global interceptors in NetworkService will handle errors
+    throw response;
   }
+}
+
 }

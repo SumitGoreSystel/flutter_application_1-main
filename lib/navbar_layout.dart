@@ -1,20 +1,32 @@
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore, library_private_types_in_public_api
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/models.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
+import 'FlightDeck/User/user_component.dart';
 import 'app_service.dart';
-import 'app_drawer.dart';
 import 'FlightDeck/main_body.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/foundation.dart'
+    show kIsWeb; // Import for checking if the app is running on the web
 
 class Layout extends StatefulWidget {
+  const Layout({super.key});
+
   @override
   _LayoutState createState() => _LayoutState();
 }
 
 class _LayoutState extends State<Layout> {
+  static FlutterSecureStorage storage = const FlutterSecureStorage();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  int _currentIndex = 0; // Index to track the currently displayed page
   final ApiService apiService = ApiService();
-  UserResponse? validateTokenResponse; // Class variable to store the token response
+  UserResponse?
+      validateTokenResponse; // Class variable to store the token response
+  List<MenuItem>? menuList; // Class variable to store the token response
 
   @override
   void initState() {
@@ -22,45 +34,55 @@ class _LayoutState extends State<Layout> {
     validateTokenAndNavigate();
   }
 
+  List<MenuItem> mapMenuItems(List<MenuItem> userMenuItems) {
+    List<MenuItem> parentMenuList = [];
+
+    // Filter parent items
+    List<MenuItem> parentItems =
+        userMenuItems.where((item) => item.isParent == 1).toList();
+
+    // Map childMenuList for each parent item
+    parentMenuList = parentItems.map((parentItem) {
+      parentItem.child = userMenuItems
+          .where((childItem) => childItem.parentMenuId == parentItem.menuId)
+          .toList();
+      return parentItem;
+    }).toList();
+
+    return parentMenuList;
+  }
+
   Future<void> validateTokenAndNavigate() async {
+    BuildContext currentContext = context; // Store the context
+
     try {
       final response = await apiService.validateToken();
 
       if (response != null) {
-        print('Token validation successful');
         setState(() {
           validateTokenResponse = response;
         });
-        
+        getMenu(response.userId);
       } else {
-        print('Token validation failed');
-        Navigator.pushReplacementNamed(context, '/login');
+        // ignore: use_build_context_synchronously
+        context.go('/login');
       }
     } catch (error) {
-      print('Error: $error');
-      Navigator.pushReplacementNamed(context, '/login');
+      print('Error during token validation: $error');
+      ScaffoldMessenger.of(currentContext).showSnackBar(const SnackBar(
+        content: Text('Error during token validation. Please try again.'),
+      ));
+      context.go('/login');
     }
   }
 
-  // Future<void> getMenu(String userId) async {
-  //   try {
-  //     final response = await apiService.get
-
-  //     if (response != null) {
-  //       print('Token validation successful');
-  //       setState(() {
-  //         validateTokenResponse = response;
-  //       });
-        
-  //     } else {
-  //       print('Token validation failed');
-  //       Navigator.pushReplacementNamed(context, '/login');
-  //     }
-  //   } catch (error) {
-  //     print('Error: $error');
-  //     Navigator.pushReplacementNamed(context, '/login');
-  //   }
-  // }
+  getMenu(int userId) {
+    apiService.fetchMenuData(userId).then((value) => {
+          setState(() {
+            menuList = mapMenuItems(value.items);
+          })
+        });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,14 +97,22 @@ class _LayoutState extends State<Layout> {
             _scaffoldKey.currentState!.openDrawer();
           },
         ),
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/Logo.png',
-              height: 45.0,
-            ),
-            const SizedBox(width: 8.0),
-          ],
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            // Check if the app is running on the web or screen width is greater than or equal to 600
+            bool showLogo = constraints.maxWidth >= 600.0;
+            //print('kIsWeb: $kIsWeb, screenWidth: ${constraints.maxWidth}');
+            return Row(
+              children: [
+                if (showLogo)
+                  Image.asset(
+                    'assets/images/Logo.png',
+                    height: 45.0,
+                  ),
+                if (showLogo) const SizedBox(width: 8.0),
+              ],
+            );
+          },
         ),
         actions: [
           IconButton(
@@ -107,34 +137,80 @@ class _LayoutState extends State<Layout> {
         ],
       ),
       drawer: Drawer(
-        child: ListView(
+        child: Column(
           children: [
             const DrawerHeader(
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  ),
+                color: Colors.white,
+              ),
               child: Image(image: AssetImage('assets/images/Logo.png')),
             ),
-            ListTile(
-              title: const Text('Menu Item 1'),
-              onTap: () {
-                // Handle menu item 1 click
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
-            ListTile(
-              title: const Text('Menu Item 2'),
-              onTap: () {
-                // Handle menu item 2 click
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: menuList?.length ?? 0,
+                itemBuilder: (BuildContext context, int index) {
+                  var menu = menuList![index];
+
+                  return ExpansionTile(
+                    title: Text(menu.subRoleName),
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: menu.child!.length,
+                        itemBuilder: (BuildContext context, int childIndex) {
+                          var childMenu = menu.child![childIndex];
+                          return ListTile(
+                            title: Text(childMenu.subRoleName),
+                            onTap: () {
+                              print(childMenu.subRoleCode);
+                              //context.go('/${childMenu.subRoleCode}');
+                              navigateToPage(1);
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            )
             // Add more ListTile items as needed
           ],
         ),
       ),
-      body: YourMainContent(),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          YourMainContent(menuList: menuList), // Main content widget
+          User(), // Add other pages as needed
+        ],
+      ),
+      // Navigator(
+      //   key: _navigatorKey,
+      //   onGenerateRoute: (settings) {
+      //     if (settings.name == '/') {
+      //       return MaterialPageRoute(
+      //         builder: (context) => YourMainContent(menuList: menuList),
+      //       );
+      //     } else {
+      //       // Handle other routes based on settings.name
+      //       // For example:
+      //       // if (settings.name == '/subRoleCode1') {
+      //       //   return MaterialPageRoute(
+      //       //     builder: (context) => SubRoleCode1Page(),
+      //       //   );
+      //       // }
+      //     }
+      //     return null;
+      //   },
+      // ),
     );
+  }
+
+  void navigateToPage(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
   }
 
   Widget _buildUserDropdown() {
@@ -187,13 +263,14 @@ class _LayoutState extends State<Layout> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                //Navigator.of(context).pop();
               },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/login');
+                storage.deleteAll();
+                context.go('/login');
               },
               child: const Text('Logout'),
             ),
