@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'NetworkService/network_service.dart';
@@ -169,7 +168,8 @@ class LoginForm extends StatelessWidget {
                   final response = await apiService.validateToken();
 
                   if (response.token.isNotEmpty) {
-                    context.go('/');
+                    Navigator.of(context).pushReplacementNamed('/');
+
                     print('Token validation successful');
                   } else {
                     print('Token validation failed');
@@ -209,13 +209,16 @@ class LoginForm extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 4.0),
+          Divider(
+            color: Colors.grey[800],
+          ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
                 // Add your Microsoft login logic here
-                context.go('/');
+                Navigator.of(context).pushReplacementNamed('/');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0072C6), // Background color

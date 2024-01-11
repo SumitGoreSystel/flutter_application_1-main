@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app_bar.dart';
+
 class User extends StatefulWidget {
   const User({super.key});
 
@@ -25,7 +27,7 @@ class _UserState extends State<User>
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return  Scaffold(
       body: Center(
         child: Text('This is User Page'),
       ),

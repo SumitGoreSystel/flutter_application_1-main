@@ -1,10 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, duplicate_ignore, library_private_types_in_public_api
 
 import 'dart:async';
+import 'dart:html';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/navigation.dart';
+import 'package:flutter_application_1/page_not_found.dart';
+import 'app_bar.dart';
 import 'package:flutter_application_1/models.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:go_router/go_router.dart';
 import 'FlightDeck/User/user_component.dart';
 import 'app_service.dart';
 import 'FlightDeck/main_body.dart';
@@ -65,14 +68,14 @@ class _LayoutState extends State<Layout> {
         getMenu(response.userId);
       } else {
         // ignore: use_build_context_synchronously
-        context.go('/login');
+        Navigator.of(currentContext).pushReplacementNamed('/login');
       }
     } catch (error) {
       print('Error during token validation: $error');
       ScaffoldMessenger.of(currentContext).showSnackBar(const SnackBar(
         content: Text('Error during token validation. Please try again.'),
       ));
-      context.go('/login');
+      Navigator.of(currentContext).pushReplacementNamed('/login');
     }
   }
 
@@ -88,54 +91,7 @@ class _LayoutState extends State<Layout> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            _scaffoldKey.currentState!.openDrawer();
-          },
-        ),
-        title: LayoutBuilder(
-          builder: (context, constraints) {
-            // Check if the app is running on the web or screen width is greater than or equal to 600
-            bool showLogo = constraints.maxWidth >= 600.0;
-            //print('kIsWeb: $kIsWeb, screenWidth: ${constraints.maxWidth}');
-            return Row(
-              children: [
-                if (showLogo)
-                  Image.asset(
-                    'assets/images/Logo.png',
-                    height: 45.0,
-                  ),
-                if (showLogo) const SizedBox(width: 8.0),
-              ],
-            );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Handle search
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // Handle notifications
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.mail),
-            onPressed: () {
-              // Handle messages
-            },
-          ),
-          _buildUserDropdown(),
-        ],
-      ),
+      appBar: CustomAppBar(),
       drawer: Drawer(
         child: Column(
           children: [
@@ -163,8 +119,10 @@ class _LayoutState extends State<Layout> {
                             title: Text(childMenu.subRoleName),
                             onTap: () {
                               print(childMenu.subRoleCode);
-                              //context.go('/${childMenu.subRoleCode}');
-                              navigateToPage(1);
+                              Navigation.mainNavigation.currentState!
+                                  .pushReplacementNamed(
+                                      "/${childMenu.subRoleCode}");
+                              Navigator.of(context).pop();
                             },
                           );
                         },
@@ -178,12 +136,60 @@ class _LayoutState extends State<Layout> {
           ],
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          YourMainContent(menuList: menuList), // Main content widget
-          User(), // Add other pages as needed
-        ],
+      body: Container(
+        child: Column(
+          children: [
+            Expanded(
+                child: Navigator(
+              key: Navigation.mainNavigation,
+              initialRoute: "/",
+              onGenerateRoute: (RouteSettings settings) {
+                Widget page;
+
+                switch (settings.name) {
+                  case "/USRL":
+                    {
+                      page = User();
+                      break;
+                    }
+                  // case "/main/2": {
+                  //   page = Page2();
+                  //   break;
+                  // }
+                  // case "/main/3": {
+                  //   page = Page3();
+                  //   break;
+                  // }
+                  // case "/main/4": {
+                  //   page = Page4();
+                  //   break;
+                  // }
+                  default:
+                    {
+                      page = PageNotFoundComponent();
+                    }
+                }
+                final uri = Uri.parse(settings.name!);
+                window.history.pushState(null, '', uri.path);
+
+                return PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => page,
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    final tween = Tween(begin: begin, end: end);
+                    final offsetAnimation = animation.drive(tween);
+                    return SlideTransition(
+                      position: offsetAnimation,
+                      child: child,
+                    );
+                  },
+                );
+              },
+            )),
+          ],
+        ),
       ),
       // Navigator(
       //   key: _navigatorKey,
@@ -193,24 +199,12 @@ class _LayoutState extends State<Layout> {
       //         builder: (context) => YourMainContent(menuList: menuList),
       //       );
       //     } else {
-      //       // Handle other routes based on settings.name
-      //       // For example:
-      //       // if (settings.name == '/subRoleCode1') {
-      //       //   return MaterialPageRoute(
-      //       //     builder: (context) => SubRoleCode1Page(),
-      //       //   );
-      //       // }
+
       //     }
       //     return null;
       //   },
       // ),
     );
-  }
-
-  void navigateToPage(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
   }
 
   Widget _buildUserDropdown() {
@@ -270,7 +264,7 @@ class _LayoutState extends State<Layout> {
             TextButton(
               onPressed: () {
                 storage.deleteAll();
-                context.go('/login');
+                Navigator.of(context).pushReplacementNamed('/login');
               },
               child: const Text('Logout'),
             ),
